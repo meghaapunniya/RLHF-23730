@@ -1,0 +1,48 @@
+=================================== Model A: Turn 1 =======================================
+
+Input: 
+N/A
+
+Output:
+Displays a currency converter thats working fine.
+
+=================================== Model B: Turn 1 =======================================
+
+Input: 
+N/A
+
+Output:
+Displays a currency converter with rich UI but the dropdown or conversion is not working.
+
+=================================== Model A: Turn 2 =======================================
+
+Input: 
+N/A
+
+Output:
+Displays a currency converter with wrong URL for fetching currentrates.
+
+=================================== Model B: Turn 2 =======================================
+
+Input: 
+N/A
+
+Output:
+Displays a currency converter with exact URL for fetching currentrates and historical rates
+
+=================================== Model A: Turn 3 =======================================
+
+Input: 
+N/A
+
+Output:
+Displays a currency converter with customizable rate alerts
+
+=================================== Model B: Turn 3 =======================================
+
+Input: 
+N/A
+
+Output:
+Displays a currency converter with exact URL for fetching currentrates and historical rates
+
