@@ -1,0 +1,2002 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Currency Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      #converter {
+        margin: 20px;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      input,
+      select,
+      button {
+        margin: 5px;
+        padding: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="converter">
+      <h2>Currency Converter</h2>
+      <input type="number" id="amount" placeholder="Enter amount" />
+      <select id="fromCurrency"></select>
+      <select id="toCurrency"></select>
+      <button onclick="convertCurrency()">Convert</button>
+      <p id="result"></p>
+      <button onclick="saveConversion()">Save Conversion</button>
+      <div id="savedConversions"></div>
+    </div>
+
+    <script>
+      let rates = {};
+      const apiKey = "YOUR_API_KEY"; // Replace with your API key
+      const baseURL = "https://open.exchangerate-api.com/v6/latest";
+
+      // Populate currency dropdowns
+      const currencies = ["USD", "EUR", "JPY", "GBP", "AUD", "INR"]; // Add more as needed
+      const fromSelect = document.getElementById("fromCurrency");
+      const toSelect = document.getElementById("toCurrency");
+      currencies.forEach((currency) => {
+        fromSelect.innerHTML += `<option>${currency}</option>`;
+        toSelect.innerHTML += `<option>${currency}</option>`;
+      });
+
+      // Fetch rates or use cached rates
+      function fetchRates() {
+        fetch(`${baseURL}?apiKey=${apiKey}`)
+          .then((response) => response.json())
+          .then((data) => {
+            rates = data.rates;
+            localStorage.setItem("exchangeRates", JSON.stringify(rates));
+            localStorage.setItem("lastUpdated", new Date().toString());
+          })
+          .catch(() => {
+            let cachedRates = localStorage.getItem("exchangeRates");
+            if (cachedRates) {
+              rates = JSON.parse(cachedRates);
+              console.log("Using cached rates.");
+            }
+          });
+      }
+
+      // Convert currency
+      function convertCurrency() {
+        const amount = document.getElementById("amount").value;
+        const from = fromSelect.value;
+        const to = toSelect.value;
+        const result = amount * (rates[to] / rates[from]);
+        document.getElementById(
+          "result"
+        ).innerText = `${amount} ${from} = ${result.toFixed(2)} ${to}`;
+      }
+
+      // Save conversion for later use
+      function saveConversion() {
+        const conversion = {
+          from: fromSelect.value,
+          to: toSelect.value,
+          amount: document.getElementById("amount").value,
+        };
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        savedConversions.push(conversion);
+        localStorage.setItem(
+          "savedConversions",
+          JSON.stringify(savedConversions)
+        );
+        displaySavedConversions();
+      }
+
+      // Display saved conversions
+      function displaySavedConversions() {
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        let div = document.getElementById("savedConversions");
+        div.innerHTML = savedConversions
+          .map(
+            (conv, index) =>
+              `<p>Conversion ${index + 1}: ${conv.amount} ${conv.from} to ${
+                conv.to
+              }</p>`
+          )
+          .join("");
+      }
+
+      // Initial fetch or use cached data
+      fetchRates();
+      // Refresh rates every hour if online
+      setInterval(fetchRates, 3600000);
+
+      // Display saved conversions on load
+      displaySavedConversions();
+    </script>
+  </body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Currency Converter Widget</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+      }
+      .widget {
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        width: 300px;
+      }
+      h2 {
+        text-align: center;
+        color: #333;
+      }
+      .input-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        color: #666;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #result {
+        margin-top: 15px;
+        text-align: center;
+        font-weight: bold;
+      }
+      #recentConversions {
+        margin-top: 20px;
+      }
+      #recentConversions h3 {
+        color: #333;
+        font-size: 16px;
+      }
+      #recentConversions ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      #recentConversions li {
+        margin-bottom: 5px;
+        color: #666;
+      }
+      #offlineMessage {
+        color: #ff0000;
+        text-align: center;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="widget">
+      <h2>Currency Converter</h2>
+      <div class="input-group">
+        <label for="amount">Amount:</label>
+        <input type="number" id="amount" min="0" step="0.01" value="1" />
+      </div>
+      <div class="input-group">
+        <label for="fromCurrency">From:</label>
+        <select id="fromCurrency"></select>
+      </div>
+      <div class="input-group">
+        <label for="toCurrency">To:</label>
+        <select id="toCurrency"></select>
+      </div>
+      <button id="convertBtn">Convert</button>
+      <div id="result"></div>
+      <div id="offlineMessage">
+        You are offline. Using last known exchange rates.
+      </div>
+      <div id="recentConversions">
+        <h3>Recent Conversions</h3>
+        <ul id="recentList"></ul>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <script>
+      const apiKey = "YOUR_API_KEY"; // Replace with your ExchangeRate-API key
+      const baseUrl = "https://open.exchangerate-api.com/v6/latest";
+
+      let exchangeRates = {};
+      let currencies = [];
+
+      const amountInput = document.getElementById("amount");
+      const fromCurrencySelect = document.getElementById("fromCurrency");
+      const toCurrencySelect = document.getElementById("toCurrency");
+      const convertBtn = document.getElementById("convertBtn");
+      const resultDiv = document.getElementById("result");
+      const recentList = document.getElementById("recentList");
+      const offlineMessage = document.getElementById("offlineMessage");
+
+      // Fetch exchange rates and populate currency dropdowns
+      async function initialize() {
+        try {
+          const response = await axios.get(`${baseURL}?apiKey=${apiKey}`);
+          exchangeRates = response.data.rates;
+          currencies = Object.keys(exchangeRates);
+
+          // Populate currency dropdowns
+          currencies.forEach((currency) => {
+            fromCurrencySelect.innerHTML += `<option value="${currency}">${currency}</option>`;
+            toCurrencySelect.innerHTML += `<option value="${currency}">${currency}</option>`;
+          });
+
+          // Set default values
+          fromCurrencySelect.value = "USD";
+          toCurrencySelect.value = "EUR";
+
+          // Save exchange rates to localStorage for offline use
+          localStorage.setItem("exchangeRates", JSON.stringify(exchangeRates));
+          localStorage.setItem("lastUpdated", new Date().toISOString());
+        } catch (error) {
+          console.error("Error fetching exchange rates:", error);
+          loadOfflineRates();
+        }
+      }
+
+      // Load offline exchange rates
+      function loadOfflineRates() {
+        const savedRates = localStorage.getItem("exchangeRates");
+        if (savedRates) {
+          exchangeRates = JSON.parse(savedRates);
+          currencies = Object.keys(exchangeRates);
+          offlineMessage.style.display = "block";
+        }
+      }
+
+      // Perform currency conversion
+      function convertCurrency() {
+        const amount = parseFloat(amountInput.value);
+        const fromCurrency = fromCurrencySelect.value;
+        const toCurrency = toCurrencySelect.value;
+
+        if (isNaN(amount)) {
+          resultDiv.textContent = "Please enter a valid amount";
+          return;
+        }
+
+        const rate = exchangeRates[toCurrency] / exchangeRates[fromCurrency];
+        const result = amount * rate;
+
+        resultDiv.textContent = `${amount} ${fromCurrency} = ${result.toFixed(
+          2
+        )} ${toCurrency}`;
+
+        // Save recent conversion
+        saveRecentConversion(amount, fromCurrency, toCurrency, result);
+      }
+
+      // Save recent conversion
+      function saveRecentConversion(amount, fromCurrency, toCurrency, result) {
+        let recentConversions =
+          JSON.parse(localStorage.getItem("recentConversions")) || [];
+        recentConversions.unshift({
+          amount,
+          fromCurrency,
+          toCurrency,
+          result: result.toFixed(2),
+          date: new Date().toISOString(),
+        });
+
+        // Keep only the last 5 conversions
+        recentConversions = recentConversions.slice(0, 5);
+
+        localStorage.setItem(
+          "recentConversions",
+          JSON.stringify(recentConversions)
+        );
+        displayRecentConversions();
+      }
+
+      // Display recent conversions
+      function displayRecentConversions() {
+        const recentConversions =
+          JSON.parse(localStorage.getItem("recentConversions")) || [];
+        recentList.innerHTML = "";
+        recentConversions.forEach((conversion) => {
+          const li = document.createElement("li");
+          li.textContent = `${conversion.amount} ${conversion.fromCurrency} = ${conversion.result} ${conversion.toCurrency}`;
+          recentList.appendChild(li);
+        });
+      }
+
+      // Event listeners
+      convertBtn.addEventListener("click", convertCurrency);
+
+      // Initialize the widget
+      initialize();
+      displayRecentConversions();
+
+      // Check for online/offline status
+      window.addEventListener("online", () => {
+        offlineMessage.style.display = "none";
+        initialize();
+      });
+
+      window.addEventListener("offline", () => {
+        offlineMessage.style.display = "block";
+      });
+    </script>
+  </body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Enhanced Currency Converter</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      #converter {
+        max-width: 800px;
+        margin: auto;
+      }
+      select,
+      input,
+      button {
+        margin: 5px 0;
+        padding: 5px;
+      }
+      .chart-container {
+        width: 100%;
+        height: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="converter">
+      <h2>Enhanced Currency Converter</h2>
+      <div>
+        <input type="number" id="amount" placeholder="Enter amount" value="1" />
+        <select id="fromCurrency"></select>
+        <select id="toCurrency"></select>
+        <button onclick="convertCurrency()">Convert</button>
+        <p>Last Updated: <span id="updateTime"></span></p>
+        <p id="currentRate"></p>
+      </div>
+
+      <div>
+        <button onclick="showHistoricalRates()">Show Historical Rates</button>
+        <input type="date" id="startDate" />
+        <input type="date" id="endDate" />
+      </div>
+
+      <div class="chart-container" style="display: none">
+        <canvas id="currencyChart"></canvas>
+      </div>
+    </div>
+
+    <script>
+      const apiKey = "YOUR_API_KEY"; // Replace with your API key
+      const baseURL = `https://open.exchangerate-api.com/v6/latest`;
+      let rates = {};
+      const chartCanvas = document.getElementById("currencyChart");
+      let myChart;
+
+      const currencies = ["USD", "EUR", "JPY", "GBP", "AUD"];
+      const populateCurrencies = () => {
+        ["fromCurrency", "toCurrency"].forEach((id) => {
+          const select = document.getElementById(id);
+          currencies.forEach((currency) => {
+            select.innerHTML += `<option>${currency}</option>`;
+          });
+        });
+      };
+
+      function fetchCurrentRates() {
+        fetch(`${baseURL}/`)
+          .then((response) => response.json())
+          .then((data) => {
+            rates = data.rates;
+            document.getElementById("updateTime").innerText = moment().format(
+              "YYYY-MM-DD HH:mm:ss"
+            );
+            localStorage.setItem("currentRates", JSON.stringify(rates));
+            localStorage.setItem("ratesUpdateTime", new Date().toString());
+          });
+      }
+
+      function convertCurrency() {
+        const amount = document.getElementById("amount").value;
+        const from = document.getElementById("fromCurrency").value;
+        const to = document.getElementById("toCurrency").value;
+        const rate = rates[to] / rates[from];
+        document.getElementById(
+          "currentRate"
+        ).innerText = `${amount} ${from} = ${amount * rate} ${to}`;
+      }
+
+      function showHistoricalRates() {
+        const from = document.getElementById("fromCurrency").value;
+        const to = document.getElementById("toCurrency").value;
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+
+        fetch(
+          `${baseURL}/history?start_at=${startDate}&end_at=${endDate}&base=${from}&symbols=${to}&access_key=${apiKey}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const chartData = Object.entries(data.rates).map(
+              ([date, rates]) => ({ x: date, y: rates[to] })
+            );
+            document.querySelector(".chart-container").style.display = "block";
+
+            if (myChart) myChart.destroy();
+            myChart = new Chart(chartCanvas, {
+              type: "line",
+              data: {
+                datasets: [
+                  {
+                    label: `${from} to ${to}`,
+                    data: chartData,
+                    borderColor: "blue",
+                    fill: false,
+                  },
+                ],
+              },
+              options: {
+                scales: {
+                  x: { type: "time", time: { unit: "day" } },
+                },
+              },
+            });
+          });
+      }
+
+      // Initialize
+      populateCurrencies();
+      fetchCurrentRates();
+      // Update rates every hour
+      setInterval(fetchCurrentRates, 3600000);
+
+      // Set default date range to last 7 days
+      document.getElementById("endDate").valueAsDate = new Date();
+      document.getElementById("startDate").valueAsDate = new Date(
+        new Date().setDate(new Date().getDate() - 7)
+      );
+    </script>
+  </body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Enhanced Currency Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      #converter {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      input,
+      select,
+      button {
+        margin: 5px;
+        padding: 5px;
+      }
+      #chartContainer {
+        margin-top: 20px;
+      }
+      #lastUpdated {
+        font-style: italic;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="converter">
+      <h2>Enhanced Currency Converter</h2>
+      <p id="lastUpdated"></p>
+      <input type="number" id="amount" placeholder="Enter amount" />
+      <select id="fromCurrency"></select>
+      <select id="toCurrency"></select>
+      <button onclick="convertCurrency()">Convert</button>
+      <p id="result"></p>
+      <button onclick="saveConversion()">Save Conversion</button>
+      <div id="savedConversions"></div>
+    </div>
+
+    <div id="chartContainer">
+      <canvas id="rateChart"></canvas>
+    </div>
+
+    <script>
+      let rates = {};
+      let historicalRates = {};
+      const apiKey = "YOUR_API_KEY"; // Replace with your API key
+      const baseURL = "https://open.exchangerate-api.com/v6";
+      let chart;
+
+      // Populate currency dropdowns
+      const currencies = ["USD", "EUR", "JPY", "GBP", "AUD"]; // Add more as needed
+      const fromSelect = document.getElementById("fromCurrency");
+      const toSelect = document.getElementById("toCurrency");
+      currencies.forEach((currency) => {
+        fromSelect.innerHTML += `<option>${currency}</option>`;
+        toSelect.innerHTML += `<option>${currency}</option>`;
+      });
+
+      // Fetch current rates
+      function fetchCurrentRates() {
+        fetch(`${baseURL}/latest?apiKey=${apiKey}`)
+          .then((response) => response.json())
+          .then((data) => {
+            rates = data.rates;
+            localStorage.setItem("exchangeRates", JSON.stringify(rates));
+            localStorage.setItem("lastUpdated", new Date().toLocaleString());
+            updateLastUpdated();
+          })
+          .catch(() => {
+            let cachedRates = localStorage.getItem("exchangeRates");
+            if (cachedRates) {
+              rates = JSON.parse(cachedRates);
+              console.log("Using cached rates.");
+            }
+            updateLastUpdated();
+          });
+      }
+
+      // Fetch historical rates for the past 7 days
+      function fetchHistoricalRates() {
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        fetch(`${baseURL}/historical/${formatDate(date)}.json?app_id=${apiKey}`)
+          .then((response) => response.json())
+          .then((data) => {
+            historicalRates = data.rates;
+            localStorage.setItem(
+              "historicalRates",
+              JSON.stringify(historicalRates)
+            );
+            updateChart();
+          })
+          .catch(() => {
+            let cachedHistoricalRates = localStorage.getItem("historicalRates");
+            if (cachedHistoricalRates) {
+              historicalRates = JSON.parse(cachedHistoricalRates);
+              console.log("Using cached historical rates.");
+              updateChart();
+            }
+          });
+      }
+
+
+
+      // Helper function to format date for API
+      function formatDate(date) {
+        return date.toISOString().split("T")[0];
+      }
+
+      // Convert currency
+      function convertCurrency() {
+        const amount = document.getElementById("amount").value;
+        const from = fromSelect.value;
+        const to = toSelect.value;
+        const result = amount * (rates[to] / rates[from]);
+        document.getElementById(
+          "result"
+        ).innerText = `${amount} ${from} = ${result.toFixed(2)} ${to}`;
+        updateChart();
+      }
+
+      // Save conversion for later use
+      function saveConversion() {
+        const conversion = {
+          from: fromSelect.value,
+          to: toSelect.value,
+          amount: document.getElementById("amount").value,
+        };
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        savedConversions.push(conversion);
+        localStorage.setItem(
+          "savedConversions",
+          JSON.stringify(savedConversions)
+        );
+        displaySavedConversions();
+      }
+
+      // Display saved conversions
+      function displaySavedConversions() {
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        let div = document.getElementById("savedConversions");
+        div.innerHTML = savedConversions
+          .map(
+            (conv, index) =>
+              `<p>Conversion ${index + 1}: ${conv.amount} ${conv.from} to ${
+                conv.to
+              }</p>`
+          )
+          .join("");
+      }
+
+      // Update the chart with historical data
+      function updateChart() {
+        const from = fromSelect.value;
+        const to = toSelect.value;
+
+        const labels = Object.keys(historicalRates);
+        const data = labels.map((date) => {
+          const fromRate = historicalRates[date][from];
+          const toRate = historicalRates[date][to];
+          return toRate / fromRate;
+        });
+
+        if (chart) {
+          chart.destroy();
+        }
+
+        chart = new Chart(document.getElementById("rateChart"), {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: `${from} to ${to} Exchange Rate`,
+                data: data,
+                borderColor: "rgb(75, 192, 192)",
+                tension: 0.1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: false,
+              },
+            },
+          },
+        });
+      }
+
+      // Update last updated time
+      function updateLastUpdated() {
+        const lastUpdated = localStorage.getItem("lastUpdated");
+        document.getElementById("lastUpdated").innerText = `Last updated: ${
+          lastUpdated || "Never"
+        }`;
+      }
+
+      // Initial fetch or use cached data
+      fetchCurrentRates();
+      fetchHistoricalRates();
+
+      // Refresh rates every hour if online
+      setInterval(fetchCurrentRates, 3600000);
+      // Refresh historical rates daily
+      setInterval(fetchHistoricalRates, 86400000);
+
+      // Display saved conversions on load
+      displaySavedConversions();
+      updateLastUpdated();
+
+      // Event listeners for currency selection changes
+      fromSelect.addEventListener("change", updateChart);
+      toSelect.addEventListener("change", updateChart);
+    </script>
+  </body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Advanced Currency Converter with Alerts</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      #converter,
+      #alerts {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      input,
+      select,
+      button {
+        margin: 5px;
+        padding: 5px;
+      }
+      #chartContainer {
+        margin-top: 20px;
+      }
+      #lastUpdated {
+        font-style: italic;
+        color: #666;
+      }
+      .alert {
+        background-color: #ffe6e6;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 5px;
+      }
+      #alertNotifications {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="converter">
+      <h2>Advanced Currency Converter</h2>
+      <p id="lastUpdated"></p>
+      <input type="number" id="amount" placeholder="Enter amount" />
+      <select id="fromCurrency"></select>
+      <select id="toCurrency"></select>
+      <button onclick="convertCurrency()">Convert</button>
+      <p id="result"></p>
+      <button onclick="saveConversion()">Save Conversion</button>
+      <div id="savedConversions"></div>
+    </div>
+
+    <div id="alerts">
+      <h3>Rate Alerts</h3>
+      <select id="alertFromCurrency"></select>
+      <select id="alertToCurrency"></select>
+      <input type="number" id="alertThreshold" placeholder="Target Rate" />
+      <select id="alertCondition">
+        <option value="above">Above</option>
+        <option value="below">Below</option>
+      </select>
+      <button onclick="setAlert()">Set Alert</button>
+      <div id="activeAlerts"></div>
+      <div id="alertNotifications"></div>
+    </div>
+
+    <div id="chartContainer">
+      <canvas id="rateChart"></canvas>
+    </div>
+
+    <script>
+      let rates = {};
+      let historicalRates = {};
+      const apiKey = "YOUR_API_KEY"; // Replace with your API key
+      const baseURL = "https://open.exchangerate-api.com/v6";
+      let chart;
+
+      // Populate currency dropdowns
+      const currencies = ["USD", "EUR", "JPY", "GBP", "AUD"]; // Add more as needed
+      const fromSelect = document.getElementById("fromCurrency");
+      const toSelect = document.getElementById("toCurrency");
+      const alertFromSelect = document.getElementById("alertFromCurrency");
+      const alertToSelect = document.getElementById("alertToCurrency");
+      currencies.forEach((currency) => {
+        fromSelect.innerHTML += `<option>${currency}</option>`;
+        toSelect.innerHTML += `<option>${currency}</option>`;
+        alertFromSelect.innerHTML += `<option>${currency}</option>`;
+        alertToSelect.innerHTML += `<option>${currency}</option>`;
+      });
+
+      // Fetch current rates
+      function fetchCurrentRates() {
+        fetch(`${baseURL}/latest?apiKey=${apiKey}`)
+          .then((response) => response.json())
+          .then((data) => {
+            rates = data.rates;
+            localStorage.setItem("exchangeRates", JSON.stringify(rates));
+            localStorage.setItem("lastUpdated", new Date().toLocaleString());
+            updateLastUpdated();
+            checkAlerts();
+          })
+          .catch(() => {
+            let cachedRates = localStorage.getItem("exchangeRates");
+            if (cachedRates) {
+              rates = JSON.parse(cachedRates);
+              console.log("Using cached rates.");
+            }
+            updateLastUpdated();
+          });
+      }
+
+      // Fetch historical rates for the past 7 days
+      function fetchHistoricalRates() {
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        fetch(
+          `${baseURL}/time-series?apiKey=${apiKey}&start_date=${formatDate(
+            startDate
+          )}&end_date=${formatDate(endDate)}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            historicalRates = data.rates;
+            localStorage.setItem(
+              "historicalRates",
+              JSON.stringify(historicalRates)
+            );
+            updateChart();
+          })
+          .catch(() => {
+            let cachedHistoricalRates = localStorage.getItem("historicalRates");
+            if (cachedHistoricalRates) {
+              historicalRates = JSON.parse(cachedHistoricalRates);
+              console.log("Using cached historical rates.");
+              updateChart();
+            }
+          });
+      }
+
+      // Helper function to format date for API
+      function formatDate(date) {
+        return date.toISOString().split("T")[0];
+      }
+
+      // Convert currency
+      function convertCurrency() {
+        const amount = document.getElementById("amount").value;
+        const from = fromSelect.value;
+        const to = toSelect.value;
+        const result = amount * (rates[to] / rates[from]);
+        document.getElementById(
+          "result"
+        ).innerText = `${amount} ${from} = ${result.toFixed(2)} ${to}`;
+        updateChart();
+      }
+
+      // Save conversion for later use
+      function saveConversion() {
+        const conversion = {
+          from: fromSelect.value,
+          to: toSelect.value,
+          amount: document.getElementById("amount").value,
+        };
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        savedConversions.push(conversion);
+        localStorage.setItem(
+          "savedConversions",
+          JSON.stringify(savedConversions)
+        );
+        displaySavedConversions();
+      }
+
+      // Display saved conversions
+      function displaySavedConversions() {
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        let div = document.getElementById("savedConversions");
+        div.innerHTML = savedConversions
+          .map(
+            (conv, index) =>
+              `<p>Conversion ${index + 1}: ${conv.amount} ${conv.from} to ${
+                conv.to
+              }</p>`
+          )
+          .join("");
+      }
+
+      // Update the chart with historical data
+      function updateChart() {
+        const from = fromSelect.value;
+        const to = toSelect.value;
+
+        const labels = Object.keys(historicalRates);
+        const data = labels.map((date) => {
+          const fromRate = historicalRates[date][from];
+          const toRate = historicalRates[date][to];
+          return toRate / fromRate;
+        });
+
+        if (chart) {
+          chart.destroy();
+        }
+
+        chart = new Chart(document.getElementById("rateChart"), {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: `${from} to ${to} Exchange Rate`,
+                data: data,
+                borderColor: "rgb(75, 192, 192)",
+                tension: 0.1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: false,
+              },
+            },
+          },
+        });
+      }
+
+      // Update last updated time
+      function updateLastUpdated() {
+        const lastUpdated = localStorage.getItem("lastUpdated");
+        document.getElementById("lastUpdated").innerText = `Last updated: ${
+          lastUpdated || "Never"
+        }`;
+      }
+
+      // Set a new alert
+      function setAlert() {
+        const from = alertFromSelect.value;
+        const to = alertToSelect.value;
+        const threshold = document.getElementById("alertThreshold").value;
+        const condition = document.getElementById("alertCondition").value;
+
+        if (!threshold) {
+          alert("Please enter a threshold value.");
+          return;
+        }
+
+        const alert = { from, to, threshold, condition };
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        alerts.push(alert);
+        localStorage.setItem("rateAlerts", JSON.stringify(alerts));
+
+        displayAlerts();
+        checkAlerts();
+      }
+
+      // Display active alerts
+      function displayAlerts() {
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        let div = document.getElementById("activeAlerts");
+        div.innerHTML = alerts
+          .map(
+            (alert, index) =>
+              `<div class="alert">
+                Alert ${index + 1}: ${alert.from} to ${alert.to} ${
+                alert.condition
+              } ${alert.threshold}
+                <button onclick="removeAlert(${index})">Remove</button>
+            </div>`
+          )
+          .join("");
+      }
+
+      // Remove an alert
+      function removeAlert(index) {
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        alerts.splice(index, 1);
+        localStorage.setItem("rateAlerts", JSON.stringify(alerts));
+        displayAlerts();
+      }
+
+      // Check alerts against current rates
+      function checkAlerts() {
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        let notifications = document.getElementById("alertNotifications");
+        notifications.innerHTML = "";
+
+        alerts.forEach((alert) => {
+          const currentRate = rates[alert.to] / rates[alert.from];
+          let triggered = false;
+
+          if (alert.condition === "above" && currentRate > alert.threshold) {
+            triggered = true;
+          } else if (
+            alert.condition === "below" &&
+            currentRate < alert.threshold
+          ) {
+            triggered = true;
+          }
+
+          if (triggered) {
+            notifications.innerHTML += `
+                    <div class="alert">
+                        Alert: ${alert.from} to ${
+              alert.to
+            } rate is now ${currentRate.toFixed(4)}, 
+                        which is ${alert.condition} your target of ${
+              alert.threshold
+            }
+                    </div>`;
+          }
+        });
+      }
+
+      // Initial fetch or use cached data
+      fetchCurrentRates();
+      fetchHistoricalRates();
+
+      // Refresh rates every hour if online
+      setInterval(fetchCurrentRates, 3600000);
+      // Refresh historical rates daily
+      setInterval(fetchHistoricalRates, 86400000);
+
+      // Display saved conversions and alerts on load
+      displaySavedConversions();
+      displayAlerts();
+      updateLastUpdated();
+
+      // Event listeners for currency selection changes
+      fromSelect.addEventListener("change", updateChart);
+      toSelect.addEventListener("change", updateChart);
+    </script>
+  </body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Currency Converter with Alerts</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      #converter,
+      #alertSection {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      input,
+      select,
+      button {
+        margin: 5px;
+        padding: 5px;
+      }
+      #chartContainer {
+        margin-top: 20px;
+      }
+      #lastUpdated,
+      #alertStatus {
+        font-style: italic;
+        color: #666;
+      }
+      .alert-item {
+        background: #f9f9f9;
+        padding: 10px;
+        margin: 5px 0;
+        border-left: 3px solid #007bff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="converter">
+      <h2>Currency Converter with Rate Alerts</h2>
+      <p id="lastUpdated"></p>
+      <input type="number" id="amount" placeholder="Enter amount" />
+      <select id="fromCurrency"></select>
+      <select id="toCurrency"></select>
+      <button onclick="convertCurrency()">Convert</button>
+      <p id="result"></p>
+      <button onclick="saveConversion()">Save Conversion</button>
+      <div id="savedConversions"></div>
+    </div>
+
+    <div id="alertSection">
+      <h3>Set Rate Alerts</h3>
+      <select id="alertFromCurrency"></select>
+      <select id="alertToCurrency"></select>
+      <input type="number" id="alertRate" placeholder="Target Rate" />
+      <select id="alertDirection">
+        <option value="above">Above</option>
+        <option value="below">Below</option>
+      </select>
+      <button onclick="addAlert()">Add Alert</button>
+      <div id="alertsList"></div>
+    </div>
+
+    <div id="chartContainer">
+      <canvas id="rateChart"></canvas>
+    </div>
+
+    <script>
+      let rates = {},
+        historicalRates = {},
+        chart,
+        alerts = [];
+
+      // Functionality similar to previous examples for fetching rates, converting currency, etc.
+      const currencies = ["USD", "EUR", "JPY", "GBP", "AUD"]; // Add more as needed
+      const fromSelect = document.getElementById("fromCurrency");
+      const toSelect = document.getElementById("toCurrency");
+      const alertFromSelect = document.getElementById("alertFromCurrency");
+      const alertToSelect = document.getElementById("alertToCurrency");
+      currencies.forEach((currency) => {
+        fromSelect.innerHTML += `<option>${currency}</option>`;
+        toSelect.innerHTML += `<option>${currency}</option>`;
+        alertFromSelect.innerHTML += `<option>${currency}</option>`;
+        alertToSelect.innerHTML += `<option>${currency}</option>`;
+      });
+      // Populate currency dropdowns for alerts
+
+      function addAlert() {
+        const from = alertFromSelect.value;
+        const to = alertToSelect.value;
+        const rate = parseFloat(document.getElementById("alertRate").value);
+        const direction = document.getElementById("alertDirection").value;
+        if (from && to && rate) {
+          alerts.push({ from, to, rate, direction });
+          localStorage.setItem("alerts", JSON.stringify(alerts));
+          displayAlerts();
+          checkAlerts(); // Check immediately after adding
+        }
+      }
+
+      function displayAlerts() {
+        const alertsList = document.getElementById("alertsList");
+        alertsList.innerHTML = alerts
+          .map(
+            (alert, index) => `
+              <div class="alert-item">
+                  Alert: ${alert.from} to ${alert.to} ${alert.direction} ${alert.rate}
+                  <button onclick="removeAlert(${index})">Remove</button>
+              </div>
+          `
+          )
+          .join("");
+      }
+
+      function removeAlert(index) {
+        alerts.splice(index, 1);
+        localStorage.setItem("alerts", JSON.stringify(alerts));
+        displayAlerts();
+      }
+
+      function checkAlerts() {
+        const alertStatus = document.getElementById("alertStatus");
+        let triggeredAlerts = [];
+        alerts.forEach((alert) => {
+          const currentRate = rates[alert.to] / rates[alert.from];
+          if (
+            (alert.direction === "above" && currentRate >= alert.rate) ||
+            (alert.direction === "below" && currentRate <= alert.rate)
+          ) {
+            triggeredAlerts.push(alert);
+          }
+        });
+
+        if (triggeredAlerts.length) {
+          alertStatus.innerHTML = `Alerts Triggered: ${triggeredAlerts
+            .map((a) => `${a.from} to ${a.to}`)
+            .join(", ")}`;
+          // Optionally, you might want to notify the user visually or via other means here
+        } else {
+          alertStatus.innerHTML = "No alerts triggered.";
+        }
+      }
+
+      // Call checkAlerts periodically or on rate update
+      function fetchCurrentRates() {
+        // Existing fetch logic...
+        fetch(`${baseURL}/latest?apiKey=${apiKey}`)
+          .then((response) => response.json())
+          .then((data) => {
+            rates = data.rates;
+            localStorage.setItem("exchangeRates", JSON.stringify(rates));
+            localStorage.setItem("lastUpdated", new Date().toLocaleString());
+            updateLastUpdated();
+            checkAlerts();
+          })
+          .catch(() => {
+            let cachedRates = localStorage.getItem("exchangeRates");
+            if (cachedRates) {
+              rates = JSON.parse(cachedRates);
+              console.log("Using cached rates.");
+            }
+            updateLastUpdated();
+          });
+      }
+
+      // On load
+      if (localStorage.getItem("alerts")) {
+        alerts = JSON.parse(localStorage.getItem("alerts"));
+        displayAlerts();
+      }
+
+      // Set interval for checking alerts if rates are updated periodically
+      setInterval(checkAlerts, 60000); // Check every minute, adjust as necessary
+      // Update the chart with historical data
+      function updateChart() {
+        const from = fromSelect.value;
+        const to = toSelect.value;
+
+        const labels = Object.keys(historicalRates);
+        const data = labels.map((date) => {
+          const fromRate = historicalRates[date][from];
+          const toRate = historicalRates[date][to];
+          return toRate / fromRate;
+        });
+
+        if (chart) {
+          chart.destroy();
+        }
+
+        chart = new Chart(document.getElementById("rateChart"), {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: `${from} to ${to} Exchange Rate`,
+                data: data,
+                borderColor: "rgb(75, 192, 192)",
+                tension: 0.1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: false,
+              },
+            },
+          },
+        });
+      }
+
+      function updateLastUpdated() {
+        const lastUpdated = localStorage.getItem("lastUpdated");
+        document.getElementById("lastUpdated").innerText = `Last updated: ${
+          lastUpdated || "Never"
+        }`;
+      }
+    </script>
+  </body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Advanced Currency Converter with Alerts</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      #converter,
+      #alerts {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      input,
+      select,
+      button {
+        margin: 5px;
+        padding: 5px;
+      }
+      #chartContainer {
+        margin-top: 20px;
+      }
+      #lastUpdated {
+        font-style: italic;
+        color: #666;
+      }
+      .alert {
+        background-color: #ffe6e6;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 5px;
+      }
+      #alertNotifications {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="converter">
+      <h2>Advanced Currency Converter</h2>
+      <p id="lastUpdated"></p>
+      <input type="number" id="amount" placeholder="Enter amount" />
+      <select id="fromCurrency"></select>
+      <select id="toCurrency"></select>
+      <button onclick="convertCurrency()">Convert</button>
+      <p id="result"></p>
+      <button onclick="saveConversion()">Save Conversion</button>
+      <div id="savedConversions"></div>
+    </div>
+
+    <div id="alerts">
+      <h3>Rate Alerts</h3>
+      <select id="alertFromCurrency"></select>
+      <select id="alertToCurrency"></select>
+      <input type="number" id="alertThreshold" placeholder="Target Rate" />
+      <select id="alertCondition">
+        <option value="above">Above</option>
+        <option value="below">Below</option>
+      </select>
+      <button onclick="setAlert()">Set Alert</button>
+      <div id="activeAlerts"></div>
+      <div id="alertNotifications"></div>
+    </div>
+
+    <div id="chartContainer">
+      <canvas id="rateChart"></canvas>
+    </div>
+
+    <script>
+      let rates = {};
+      let historicalRates = {};
+      const apiKey = "YOUR_API_KEY"; // Replace with your API key
+      const baseURL = "https://open.exchangerate-api.com/v6";
+      let chart;
+
+      // Populate currency dropdowns
+      const currencies = ["USD", "EUR", "JPY", "GBP", "AUD"]; // Add more as needed
+      const fromSelect = document.getElementById("fromCurrency");
+      const toSelect = document.getElementById("toCurrency");
+      const alertFromSelect = document.getElementById("alertFromCurrency");
+      const alertToSelect = document.getElementById("alertToCurrency");
+      currencies.forEach((currency) => {
+        fromSelect.innerHTML += `<option>${currency}</option>`;
+        toSelect.innerHTML += `<option>${currency}</option>`;
+        alertFromSelect.innerHTML += `<option>${currency}</option>`;
+        alertToSelect.innerHTML += `<option>${currency}</option>`;
+      });
+
+      // Fetch current rates
+      function fetchCurrentRates() {
+        fetch(`${baseURL}/latest?apiKey=${apiKey}`)
+          .then((response) => response.json())
+          .then((data) => {
+            rates = data.rates;
+            localStorage.setItem("exchangeRates", JSON.stringify(rates));
+            localStorage.setItem("lastUpdated", new Date().toLocaleString());
+            updateLastUpdated();
+            checkAlerts();
+          })
+          .catch(() => {
+            let cachedRates = localStorage.getItem("exchangeRates");
+            if (cachedRates) {
+              rates = JSON.parse(cachedRates);
+              console.log("Using cached rates.");
+            }
+            updateLastUpdated();
+          });
+      }
+
+      // Fetch historical rates for the past 7 days
+      function fetchHistoricalRates() {
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        fetch(
+          `${baseURL}/time-series?apiKey=${apiKey}&start_date=${formatDate(
+            startDate
+          )}&end_date=${formatDate(endDate)}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            historicalRates = data.rates;
+            localStorage.setItem(
+              "historicalRates",
+              JSON.stringify(historicalRates)
+            );
+            updateChart();
+          })
+          .catch(() => {
+            let cachedHistoricalRates = localStorage.getItem("historicalRates");
+            if (cachedHistoricalRates) {
+              historicalRates = JSON.parse(cachedHistoricalRates);
+              console.log("Using cached historical rates.");
+              updateChart();
+            }
+          });
+      }
+
+      // Helper function to format date for API
+      function formatDate(date) {
+        return date.toISOString().split("T")[0];
+      }
+
+      // Convert currency
+      function convertCurrency() {
+        const amount = document.getElementById("amount").value;
+        const from = fromSelect.value;
+        const to = toSelect.value;
+        const result = amount * (rates[to] / rates[from]);
+        document.getElementById(
+          "result"
+        ).innerText = `${amount} ${from} = ${result.toFixed(2)} ${to}`;
+        updateChart();
+      }
+
+      // Save conversion for later use
+      function saveConversion() {
+        const conversion = {
+          from: fromSelect.value,
+          to: toSelect.value,
+          amount: document.getElementById("amount").value,
+        };
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        savedConversions.push(conversion);
+        localStorage.setItem(
+          "savedConversions",
+          JSON.stringify(savedConversions)
+        );
+        displaySavedConversions();
+      }
+
+      // Display saved conversions
+      function displaySavedConversions() {
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        let div = document.getElementById("savedConversions");
+        div.innerHTML = savedConversions
+          .map(
+            (conv, index) =>
+              `<p>Conversion ${index + 1}: ${conv.amount} ${conv.from} to ${
+                conv.to
+              }</p>`
+          )
+          .join("");
+      }
+
+      // Update the chart with historical data
+      function updateChart() {
+        const from = fromSelect.value;
+        const to = toSelect.value;
+
+        const labels = Object.keys(historicalRates);
+        const data = labels.map((date) => {
+          const fromRate = historicalRates[date][from];
+          const toRate = historicalRates[date][to];
+          return toRate / fromRate;
+        });
+
+        if (chart) {
+          chart.destroy();
+        }
+
+        chart = new Chart(document.getElementById("rateChart"), {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: `${from} to ${to} Exchange Rate`,
+                data: data,
+                borderColor: "rgb(75, 192, 192)",
+                tension: 0.1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: false,
+              },
+            },
+          },
+        });
+      }
+
+      // Update last updated time
+      function updateLastUpdated() {
+        const lastUpdated = localStorage.getItem("lastUpdated");
+        document.getElementById("lastUpdated").innerText = `Last updated: ${
+          lastUpdated || "Never"
+        }`;
+      }
+
+      // Set a new alert
+      function setAlert() {
+        const from = alertFromSelect.value;
+        const to = alertToSelect.value;
+        const threshold = document.getElementById("alertThreshold").value;
+        const condition = document.getElementById("alertCondition").value;
+
+        if (!threshold) {
+          alert("Please enter a threshold value.");
+          return;
+        }
+
+        const alert = { from, to, threshold, condition };
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        alerts.push(alert);
+        localStorage.setItem("rateAlerts", JSON.stringify(alerts));
+
+        displayAlerts();
+        checkAlerts();
+      }
+
+      // Display active alerts
+      function displayAlerts() {
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        let div = document.getElementById("activeAlerts");
+        div.innerHTML = alerts
+          .map(
+            (alert, index) =>
+              `<div class="alert">
+                Alert ${index + 1}: ${alert.from} to ${alert.to} ${
+                alert.condition
+              } ${alert.threshold}
+                <button onclick="removeAlert(${index})">Remove</button>
+            </div>`
+          )
+          .join("");
+      }
+
+      // Remove an alert
+      function removeAlert(index) {
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        alerts.splice(index, 1);
+        localStorage.setItem("rateAlerts", JSON.stringify(alerts));
+        displayAlerts();
+      }
+
+      // Check alerts against current rates
+      function checkAlerts() {
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        let notifications = document.getElementById("alertNotifications");
+        notifications.innerHTML = "";
+
+        alerts.forEach((alert) => {
+          const currentRate = rates[alert.to] / rates[alert.from];
+          let triggered = false;
+
+          if (alert.condition === "above" && currentRate > alert.threshold) {
+            triggered = true;
+          } else if (
+            alert.condition === "below" &&
+            currentRate < alert.threshold
+          ) {
+            triggered = true;
+          }
+
+          if (triggered) {
+            notifications.innerHTML += `
+                    <div class="alert">
+                        Alert: ${alert.from} to ${
+              alert.to
+            } rate is now ${currentRate.toFixed(4)}, 
+                        which is ${alert.condition} your target of ${
+              alert.threshold
+            }
+                    </div>`;
+          }
+        });
+      }
+
+      // Initial fetch or use cached data
+      fetchCurrentRates();
+      fetchHistoricalRates();
+
+      // Refresh rates every hour if online
+      setInterval(fetchCurrentRates, 3600000);
+      // Refresh historical rates daily
+      setInterval(fetchHistoricalRates, 86400000);
+
+      // Display saved conversions and alerts on load
+      displaySavedConversions();
+      displayAlerts();
+      updateLastUpdated();
+
+      // Event listeners for currency selection changes
+      fromSelect.addEventListener("change", updateChart);
+      toSelect.addEventListener("change", updateChart);
+    </script>
+  </body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Advanced Currency Converter with Alerts</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      #converter,
+      #alerts {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      input,
+      select,
+      button {
+        margin: 5px;
+        padding: 5px;
+      }
+      #chartContainer {
+        margin-top: 20px;
+      }
+      #lastUpdated {
+        font-style: italic;
+        color: #666;
+      }
+      .alert {
+        background-color: #ffe6e6;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 5px;
+      }
+      #alertNotifications {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="converter">
+      <h2>Advanced Currency Converter</h2>
+      <p id="lastUpdated"></p>
+      <input type="number" id="amount" placeholder="Enter amount" />
+      <select id="fromCurrency"></select>
+      <select id="toCurrency"></select>
+      <button onclick="convertCurrency()">Convert</button>
+      <p id="result"></p>
+      <button onclick="saveConversion()">Save Conversion</button>
+      <div id="savedConversions"></div>
+    </div>
+
+    <div id="alerts">
+      <h3>Rate Alerts</h3>
+      <select id="alertFromCurrency"></select>
+      <select id="alertToCurrency"></select>
+      <input type="number" id="alertThreshold" placeholder="Target Rate" />
+      <select id="alertCondition">
+        <option value="above">Above</option>
+        <option value="below">Below</option>
+      </select>
+      <button onclick="setAlert()">Set Alert</button>
+      <div id="activeAlerts"></div>
+      <div id="alertNotifications"></div>
+    </div>
+
+    <div id="chartContainer">
+      <canvas id="rateChart"></canvas>
+    </div>
+
+    <script>
+      let rates = {};
+      let historicalRates = {};
+      const apiKey = "YOUR_API_KEY"; // Replace with your API key
+      const baseURL = "https://open.exchangerate-api.com/v6";
+      let chart;
+
+      // Populate currency dropdowns
+      const currencies = ["USD", "EUR", "JPY", "GBP", "AUD"]; // Add more as needed
+      const fromSelect = document.getElementById("fromCurrency");
+      const toSelect = document.getElementById("toCurrency");
+      const alertFromSelect = document.getElementById("alertFromCurrency");
+      const alertToSelect = document.getElementById("alertToCurrency");
+      currencies.forEach((currency) => {
+        fromSelect.innerHTML += `<option>${currency}</option>`;
+        toSelect.innerHTML += `<option>${currency}</option>`;
+        alertFromSelect.innerHTML += `<option>${currency}</option>`;
+        alertToSelect.innerHTML += `<option>${currency}</option>`;
+      });
+
+      // Fetch current rates
+      function fetchCurrentRates() {
+        fetch(`${baseURL}/latest?apiKey=${apiKey}`)
+          .then((response) => response.json())
+          .then((data) => {
+            rates = data.rates;
+            localStorage.setItem("exchangeRates", JSON.stringify(rates));
+            localStorage.setItem("lastUpdated", new Date().toLocaleString());
+            updateLastUpdated();
+            checkAlerts();
+          })
+          .catch(() => {
+            let cachedRates = localStorage.getItem("exchangeRates");
+            if (cachedRates) {
+              rates = JSON.parse(cachedRates);
+              console.log("Using cached rates.");
+            }
+            updateLastUpdated();
+          });
+      }
+
+      // Fetch historical rates for the past 7 days
+      function fetchHistoricalRates() {
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        fetch(
+          `${baseURL}/time-series?apiKey=${apiKey}&start_date=${formatDate(
+            startDate
+          )}&end_date=${formatDate(endDate)}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            historicalRates = data.rates;
+            localStorage.setItem(
+              "historicalRates",
+              JSON.stringify(historicalRates)
+            );
+            updateChart();
+          })
+          .catch(() => {
+            let cachedHistoricalRates = localStorage.getItem("historicalRates");
+            if (cachedHistoricalRates) {
+              historicalRates = JSON.parse(cachedHistoricalRates);
+              console.log("Using cached historical rates.");
+              updateChart();
+            }
+          });
+      }
+
+      // Helper function to format date for API
+      function formatDate(date) {
+        return date.toISOString().split("T")[0];
+      }
+
+      // Convert currency
+      function convertCurrency() {
+        const amount = document.getElementById("amount").value;
+        const from = fromSelect.value;
+        const to = toSelect.value;
+        const result = amount * (rates[to] / rates[from]);
+        document.getElementById(
+          "result"
+        ).innerText = `${amount} ${from} = ${result.toFixed(2)} ${to}`;
+        updateChart();
+      }
+
+      // Save conversion for later use
+      function saveConversion() {
+        const conversion = {
+          from: fromSelect.value,
+          to: toSelect.value,
+          amount: document.getElementById("amount").value,
+        };
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        savedConversions.push(conversion);
+        localStorage.setItem(
+          "savedConversions",
+          JSON.stringify(savedConversions)
+        );
+        displaySavedConversions();
+      }
+
+      // Display saved conversions
+      function displaySavedConversions() {
+        let savedConversions = JSON.parse(
+          localStorage.getItem("savedConversions") || "[]"
+        );
+        let div = document.getElementById("savedConversions");
+        div.innerHTML = savedConversions
+          .map(
+            (conv, index) =>
+              `<p>Conversion ${index + 1}: ${conv.amount} ${conv.from} to ${
+                conv.to
+              }</p>`
+          )
+          .join("");
+      }
+
+      // Update the chart with historical data
+      function updateChart() {
+        const from = fromSelect.value;
+        const to = toSelect.value;
+
+        const labels = Object.keys(historicalRates);
+        const data = labels.map((date) => {
+          const fromRate = historicalRates[date][from];
+          const toRate = historicalRates[date][to];
+          return toRate / fromRate;
+        });
+
+        if (chart) {
+          chart.destroy();
+        }
+
+        chart = new Chart(document.getElementById("rateChart"), {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: `${from} to ${to} Exchange Rate`,
+                data: data,
+                borderColor: "rgb(75, 192, 192)",
+                tension: 0.1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: false,
+              },
+            },
+          },
+        });
+      }
+
+      // Update last updated time
+      function updateLastUpdated() {
+        const lastUpdated = localStorage.getItem("lastUpdated");
+        document.getElementById("lastUpdated").innerText = `Last updated: ${
+          lastUpdated || "Never"
+        }`;
+      }
+
+      // Set a new alert
+      function setAlert() {
+        const from = alertFromSelect.value;
+        const to = alertToSelect.value;
+        const threshold = document.getElementById("alertThreshold").value;
+        const condition = document.getElementById("alertCondition").value;
+
+        if (!threshold) {
+          alert("Please enter a threshold value.");
+          return;
+        }
+
+        const alert = { from, to, threshold, condition };
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        alerts.push(alert);
+        localStorage.setItem("rateAlerts", JSON.stringify(alerts));
+
+        displayAlerts();
+        checkAlerts();
+      }
+
+      // Display active alerts
+      function displayAlerts() {
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        let div = document.getElementById("activeAlerts");
+        div.innerHTML = alerts
+          .map(
+            (alert, index) =>
+              `<div class="alert">
+                Alert ${index + 1}: ${alert.from} to ${alert.to} ${
+                alert.condition
+              } ${alert.threshold}
+                <button onclick="removeAlert(${index})">Remove</button>
+            </div>`
+          )
+          .join("");
+      }
+
+      // Remove an alert
+      function removeAlert(index) {
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        alerts.splice(index, 1);
+        localStorage.setItem("rateAlerts", JSON.stringify(alerts));
+        displayAlerts();
+      }
+
+      // Check alerts against current rates
+      function checkAlerts() {
+        let alerts = JSON.parse(localStorage.getItem("rateAlerts") || "[]");
+        let notifications = document.getElementById("alertNotifications");
+        notifications.innerHTML = "";
+
+        alerts.forEach((alert) => {
+          const currentRate = rates[alert.to] / rates[alert.from];
+          let triggered = false;
+
+          if (alert.condition === "above" && currentRate > alert.threshold) {
+            triggered = true;
+          } else if (
+            alert.condition === "below" &&
+            currentRate < alert.threshold
+          ) {
+            triggered = true;
+          }
+
+          if (triggered) {
+            notifications.innerHTML += `
+                    <div class="alert">
+                        Alert: ${alert.from} to ${
+              alert.to
+            } rate is now ${currentRate.toFixed(4)}, 
+                        which is ${alert.condition} your target of ${
+              alert.threshold
+            }
+                    </div>`;
+          }
+        });
+      }
+
+      // Initial fetch or use cached data
+      fetchCurrentRates();
+      fetchHistoricalRates();
+
+      // Refresh rates every hour if online
+      setInterval(fetchCurrentRates, 3600000);
+      // Refresh historical rates daily
+      setInterval(fetchHistoricalRates, 86400000);
+
+      // Display saved conversions and alerts on load
+      displaySavedConversions();
+      displayAlerts();
+      updateLastUpdated();
+
+      // Event listeners for currency selection changes
+      fromSelect.addEventListener("change", updateChart);
+      toSelect.addEventListener("change", updateChart);
+    </script>
+  </body>
+</html>
